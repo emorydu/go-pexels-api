@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -255,16 +256,45 @@ func main() {
 
 	var c = NewClient(token)
 
-	result, err := c.SearchPhotos("waves", 15, 1)
+	result, err := c.SearchPhotos("waves", 80, 1)
 	if err != nil {
-		fmt.Errorf("search error: %v", err)
+		_ = fmt.Errorf("search error: %v", err)
 	}
 	if result.Page == 0 {
-		fmt.Errorf("search result wrong")
+		_ = fmt.Errorf("search result wrong")
 	}
 	rj, err := json.Marshal(result)
 	if err != nil {
 		log.Println(err)
 	}
-	os.WriteFile("test", rj, 0666)
+	os.WriteFile("test.json", rj, 0666)
+	//var wg sync.WaitGroup
+	//now := time.Now()
+	//for _, v := range result.Photos {
+	//	wg.Add(1)
+	//	go getImage(path.Base(v.Src.Original), v.Src.Original, &wg)
+	//}
+	//wg.Wait()
+	//fmt.Printf("%f\n", time.Since(now).Minutes())
+
+}
+
+func getImage(filename string, url string, wg *sync.WaitGroup) error {
+	fmt.Println("prepare downloads file: ", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+	if body, err := io.ReadAll(resp.Body); err != nil {
+		return err
+	} else {
+
+		if err := os.WriteFile(filename, body, 0666); err != nil {
+			return err
+		}
+		wg.Done()
+	}
+	return nil
 }
